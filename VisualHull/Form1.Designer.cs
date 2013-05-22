@@ -41,6 +41,7 @@ namespace WindowsFormsApplication3
             this.drawConLine = new System.Windows.Forms.Button();
             this.p2dto3d = new System.Windows.Forms.Button();
             this.targetContourPoint = new System.Windows.Forms.Button();
+            this.epiConInterBins = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.fileSystemWatcher1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -121,11 +122,22 @@ namespace WindowsFormsApplication3
             this.targetContourPoint.UseVisualStyleBackColor = true;
             this.targetContourPoint.Click += new System.EventHandler(this.targetContourPoint_Click);
             // 
+            // epiConInterBins
+            // 
+            this.epiConInterBins.Location = new System.Drawing.Point(63, 271);
+            this.epiConInterBins.Name = "epiConInterBins";
+            this.epiConInterBins.Size = new System.Drawing.Size(75, 23);
+            this.epiConInterBins.TabIndex = 7;
+            this.epiConInterBins.Text = "epiConInterBins";
+            this.epiConInterBins.UseVisualStyleBackColor = true;
+            this.epiConInterBins.Click += new System.EventHandler(this.epiConInterBins_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(456, 429);
+            this.Controls.Add(this.epiConInterBins);
             this.Controls.Add(this.targetContourPoint);
             this.Controls.Add(this.p2dto3d);
             this.Controls.Add(this.drawConLine);
@@ -156,6 +168,7 @@ namespace WindowsFormsApplication3
         private Button drawConLine;
         private Button p2dto3d;
         private Button targetContourPoint;
+        private Button epiConInterBins;
     }
 }
 

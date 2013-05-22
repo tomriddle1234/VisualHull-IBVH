@@ -93,40 +93,9 @@
     <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="csgl">
-      <HintPath>..\..\..\..\..\..\Tools\opengl\csgl.1.4.1.dll\libinstall\csgl.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV">
-      <HintPath>D:\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.DebuggerVisualizers.VS2008">
-      <HintPath>..\..\..\..\..\..\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.DebuggerVisualizers.VS2008.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.DebuggerVisualizers.VS2010">
-      <HintPath>..\..\..\..\..\..\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.DebuggerVisualizers.VS2010.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.GPU">
-      <HintPath>..\..\..\..\..\..\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.GPU.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.ML">
-      <HintPath>D:\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.ML.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.OCR">
-      <HintPath>..\..\..\..\..\..\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.OCR.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.CV.UI">
-      <HintPath>D:\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.CV.UI.dll</HintPath>
-    </Reference>
-    <Reference Include="Emgu.Util">
-      <HintPath>D:\Program Files\emgucv-windows-x86 2.3.0.1416\bin\Emgu.Util.dll</HintPath>
-    </Reference>
     <Reference Include="OpenCvSharp, Version=2.0.4431.20114, Culture=neutral, PublicKeyToken=6adad1e807fea099, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\OpenCvSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenCvSharp.CPlusPlus, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6adad1e807fea099, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\OpenCvSharp.CPlusPlus.dll</HintPath>
+      <HintPath>bin\x64\Debug\OpenCvSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -168,6 +137,7 @@
     </Compile>
     <None Include="app.config" />
     <None Include="ClassDiagram1.cd" />
+    <None Include="ClassDiagram2.cd" />
     <None Include="Properties\app.manifest" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

@@ -28,6 +28,7 @@ namespace WindowsFormsApplication3
         {           
             InitializeComponent();
         }
+        #region huang's program
         private double[,] Read_camerpar_txt(string filePath, string image_name)//读相机参数txt文本函数.返回投影矩阵（数组）
         {
             FileStream fs = File.OpenRead(filePath);
@@ -1040,6 +1041,8 @@ namespace WindowsFormsApplication3
             //将这些点保存
         
         }
+        #endregion
+        #region program
         private void readContour(string path,out double[][,] contourPoint,out double[][,] contourLine,int nCamera,string imgFormat)
         {
             contourPoint = new double[nCamera][,];
@@ -1255,7 +1258,7 @@ namespace WindowsFormsApplication3
                 }
             }
         }
-        private void getContourPoint(string contourDir, out double[][,] contourPoint, int nCamera,string imgFormat,int start, int end)
+        private void getContourPoint(string contourDir, out double[][,] contourPoint, int nCamera,string imgFormat,int start, int end,int sampleEveryN)
         {
             contourPoint = new double[end-start][,];
             List<CvPoint> list = new List<CvPoint>();
@@ -1270,7 +1273,7 @@ namespace WindowsFormsApplication3
                     
                     for(int k=0;k<img.Width;k++)
                     {
-                        if(img[j,k].Equals(black) && j%10 == 0 && k%10==0)
+                        if(img[j,k].Equals(black) && j%sampleEveryN == 0 && k%sampleEveryN==0)
                         {
                             list.Add(new CvPoint(k,j));
                         }
@@ -1343,7 +1346,7 @@ namespace WindowsFormsApplication3
         //                        每个视图上有m个轮廓点，m各不相同
         //                        每个轮廓点在另外(nCamera-1)个图上有对应点，不确定有多少个，但应为偶数|n个点对(x1 y1 x2 y2) （x3 y3 x4 y4)... 】
         //------------------------
-        private void getEpilineContourlineIntersection(double[,][][] epiline,double[][,] contourLine, out double[,][][,] epiConIntersection)
+        private void getEpilineContourlineIntersection(double[,][][] epiline,double[,][] epipole,double[][,] contourLine, out double[,][][,] epiConIntersection)
         {
             epiConIntersection = new double[epiline.GetLength(0), epiline.GetLength(1)][][,];
 
@@ -1358,10 +1361,129 @@ namespace WindowsFormsApplication3
                     epiConIntersection[i, j] = new double[epiline[i, j].GetLength(0)][,];
                     for (int k = 0; k < epiline[i, j].GetLength(0); k++)
                     {
-                        getEpiConInter(epiline[i,j][k],contourLine[j],out epiConIntersection[i,j][k]);
+                        //double X1 = -epiline[i, j][0][2] / epiline[i, j][0][0];
+                        //double Y1 = -epiline[i, j][0][2] / epiline[i,j][0][1];
+                        //double X2 = -epiline[i, j][1][2] / epiline[i, j][1][0];
+                        //double Y2 = -epiline[i, j][1][2] / epiline[i, j][1][1];
+                        //epipole[i,j][0] = (Y2 - Y1) / (Y2 / X2 - Y1 / X1);
+                        //epipole[i,j][1] = (X2 - X1) / (X2 / Y2 - X1 / Y1);
+                        //getEpiConInter(epiline[i,j][k],contourLine[j],out epiConIntersection[i,j][k]);
+                        getEpiConInterBins(epipole[i, j], epiline[i, j][k], contourLine[j], out epiConIntersection[i, j][k]);
+                    
                     }
                 }
             }
+        }
+        private void getEpiConInterBins(double[] epipole, double[] epilineOne, double[,] contourLineOneImage, out double[,] intersection)
+        {
+            #region initialize variables
+            double epipoleX = epipole[0];
+            double epipoleY = epipole[1];
+
+            //double epipoleX = -epilineOne[2] / (2 * epilineOne[0]);
+            //double epipoleY = -epilineOne[2] / (2 * epilineOne[1]);
+
+            double x,y;
+            double k;//slope
+            double minK = double.MaxValue;
+            double maxK = double.MinValue;
+            int nBins = 7;
+            List<double[]> intersectionList = new List<double[]>();
+            double[] intersectionPoint = new double[2];
+            double[] seg = new double[4];
+            CvMat epilineOneMat = new CvMat(3,1,MatrixType.F64C1);
+            CvMat contourLineOneMat = new CvMat(3,1,MatrixType.F64C1);
+            CvMat intersectionMat = new CvMat(3,1,MatrixType.F64C1);
+            List<int>[] bins = new List<int>[nBins];//存储的是轮廓线的序号
+            for (int i = 0; i < bins.GetLength(0); i++)
+            {
+                bins[i] = new List<int>();
+            }
+            #endregion
+            #region find slope min and max
+            for (int i = 0; i < contourLineOneImage.GetLength(0); i++)
+            {
+                x = contourLineOneImage[i, 5];
+                y = contourLineOneImage[i, 6];
+                k = Math.Atan2((y - epipoleY), (x - epipoleX)) + Math.PI ;
+
+                if (k < minK)
+                {
+                    minK = k;
+                }
+                if (k > maxK)
+                {
+                    maxK = k;
+                }
+            }
+            #endregion
+            #region put contour in bin
+
+            double binRange = (maxK - minK) / nBins;
+            for (int i = 0; i < contourLineOneImage.GetLength(0); i++)
+            {
+                x = contourLineOneImage[i, 5];
+                y = contourLineOneImage[i, 6];
+                k = Math.Atan2(y - epipoleY,x - epipoleX)+Math.PI;
+
+                int whichBin = (int)((k - minK) / binRange);
+
+                if (whichBin == nBins)//最大k分到最后一个bin里
+                {
+                    whichBin = nBins - 1;
+                }
+
+                bins[whichBin].Add(i);
+            }
+            #endregion
+            #region find epiContourInter in specific bin
+            double theOtherPOnEpiLX = 0;
+            double theOtherPOnEpiLY = -epilineOne[2] / epilineOne[1];
+            double epiK = Math.Atan2(theOtherPOnEpiLY-epipoleY,theOtherPOnEpiLX-epipoleX)+Math.PI;
+
+            //double epipoleOnEpiline = epilineOne[0] * epipoleX + epilineOne[1] * epipoleY + epilineOne[2];
+
+
+            int findInNthBin =(int)((epiK-minK)/binRange);
+
+            if (findInNthBin == nBins)
+            {
+                findInNthBin = nBins - 1;
+            }
+            if (findInNthBin >= 0 && findInNthBin < nBins)
+            {
+                for (int i = 0; i < bins[findInNthBin].Count; i++)
+                {
+                    int nthContourLine = bins[findInNthBin][i];
+                    epilineOneMat[0, 0] = epilineOne[0];
+                    epilineOneMat[1, 0] = epilineOne[1];
+                    epilineOneMat[2, 0] = epilineOne[2];
+                    contourLineOneMat[0, 0] = contourLineOneImage[nthContourLine, 0];
+                    contourLineOneMat[1, 0] = contourLineOneImage[nthContourLine, 1];
+                    contourLineOneMat[2, 0] = contourLineOneImage[nthContourLine, 2];
+                    Cv.CrossProduct(epilineOneMat, contourLineOneMat, intersectionMat);
+
+                    intersectionPoint[0] = intersectionMat[0, 0] / intersectionMat[2, 0];
+                    intersectionPoint[1] = intersectionMat[1, 0] / intersectionMat[2, 0];
+                    for (int j = 0; j < 4; j++)
+                    {
+                        seg[j] = contourLineOneImage[nthContourLine, j + 3];
+                    }
+                    if (isPointOnSeg(intersectionPoint, seg))
+                    {
+                        intersectionList.Add(new double[2] { intersectionPoint[0], intersectionPoint[1] });
+                    }
+                }
+            }
+            #endregion
+            #region save in out para intersection
+            intersection = new double[intersectionList.Count,2];
+            for (int i = 0; i < intersectionList.Count; i++)
+            {
+                intersection[i,0] = intersectionList[i][0];
+                intersection[i,1] = intersectionList[i][1];
+            }
+            #endregion
         }
         private void getEpiConInter(double[] epilineOne, double[,] contourLineOneImage, out double[,] intersection)
         {
@@ -1583,18 +1705,32 @@ namespace WindowsFormsApplication3
 
             epipoleOne = new double[3] { epipoleOneMat[0, 0], epipoleOneMat[1, 0], epipoleOneMat[2, 0] };
         }
-        private void cacuEpipole(double[,][,] fundMat, out double[,][] epipole)
+        private void cacuEpipole(double[][,] camPara,double [][] camLightCenter, out double[,][] epipole)
         {
-            epipole = new double[fundMat.GetLength(0), fundMat.GetLength(1)][];
-            for (int i = 0; i < fundMat.GetLength(0); i++)
+            epipole = new double[camPara.GetLength(0), camPara.GetLength(0)][];
+
+            CvMat lightCenterMat = new CvMat(4, 1, MatrixType.F64C1);
+            
+            for (int i = 0; i < epipole.GetLength(0); i++)
             {
-                for (int j = 0; j < fundMat.GetLength(0); j++)
+                for (int j = 0; j < epipole.GetLength(1); j++)
                 {
-                    if (i == j)
+                    if(i==j)
                     {
                         continue;
                     }
-                    cacuEpipoleOne(fundMat[i,j],out epipole[i,j],i,j);
+                    for (int k = 0; k < 3; k++)
+                    {
+                        lightCenterMat[k, 0] = camLightCenter[i][k];
+                    }
+                    lightCenterMat[3, 0] = 1;
+                    CvMat camParaMat = new CvMat(3, 4, MatrixType.F64C1, camPara[j]);
+                    CvMat epipoleMat = camParaMat * lightCenterMat;
+                    double epipoleX = epipoleMat[0,0] / epipoleMat[2,0];
+                    double epipoleY = epipoleMat[1,0] / epipoleMat[2,0];
+
+                    epipole[i,j] = new double[2]{epipoleX,epipoleY};
+                    
                 }
             }
         }
@@ -1621,7 +1757,6 @@ namespace WindowsFormsApplication3
 
             }
         }
-
         private void getRay3dPointDst(double[,][][,] ray3dPoint, double[][] camLightCenter, out double[,][][] ray3dPointDst)
         {
             ray3dPointDst = new double[ray3dPoint.GetLength(0), ray3dPoint.GetLength(1)][][];
@@ -1708,10 +1843,10 @@ namespace WindowsFormsApplication3
                         int nPointOnRay = ray3dPointDst[i, j][k].GetLength(0);
                         if (nPointOnRay % 2 == 1)//点是基数，拿去最后一个点
                         {
-                            nPointOnRay -= 1;
+                            nPointOnRay = 0;
                         }
                         segsGroup[groupNum] = new double[nPointOnRay][];
-                        for (int l = 0; l < ray3dPointDst[i, j][k].GetLength(0); l++)
+                        for (int l = 0; l < nPointOnRay; l++)
                         {
                             segsGroup[groupNum][l] = new double[7];
                             //0距离  1.i值:目标图 2.j值:参考图 3.k值:轮廓上哪一点 4.l值:第几个点 5.起点or终点 6.clipflag
@@ -1828,14 +1963,16 @@ namespace WindowsFormsApplication3
 
             return intersectSegs;
         }
-        private void savePly(string filePath, double[,][][,] ray3dPoint, bool[,][][] clipFlag)
+        private void savePly(string filePath, double[,][][,] ray3dPoint,double[][,] contourPoint, bool[,][][] clipFlag)
         {
+            #region intialize variables
             FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
             StreamWriter sw = new StreamWriter(fs);
 
             int count = 0;
             int face = 0;
-
+            #endregion
+            #region caculate the count of unclipped 3d points
             for (int i = 0; i < ray3dPoint.GetLength(0); i++)
             {
                 for (int j = 0; j < ray3dPoint.GetLength(1); j++)
@@ -1856,6 +1993,17 @@ namespace WindowsFormsApplication3
                     }
                 }
             }
+            #endregion
+
+            #region read images
+            int targetImgN = ray3dPoint.GetLength(0);
+            IplImage[] imgs = new IplImage[ray3dPoint.GetLength(0)];
+            for (int i = 0; i < targetImgN; i++)
+            {
+                imgs[i] = Cv.LoadImage("dataset-dinosaur\\dinosaur-images\\" + i.ToString("00") + ".jpg", LoadMode.Color);
+            }
+            #endregion
+            #region write .ply
 
             string ply_header = "ply\nformat ascii 1.0\ncomment made by Road Liu\ncomment this file is a cube\nelement vertex " + count.ToString() + "\nproperty float x\n"
                                 + "property float y\nproperty float z\nproperty   uint8 red\nproperty   uint8 green\nproperty   uint8 blue\nelement face " + face.ToString() + "\nproperty list uchar int vertex_index\nend_header\n";
@@ -1881,7 +2029,14 @@ namespace WindowsFormsApplication3
                         for (int l = 0; l < ray3dPoint[i, j][k].GetLength(0); l++)
                         {
                             if (clipFlag[i, j][k][l] == false)
-                            {
+                            { 
+                                int targetX = (int)contourPoint[i][k,0];
+                                int targetY = (int)contourPoint[i][k,1];
+                                CvScalar targetPointScalar = Cv.Get2D(imgs[i], targetY, targetX);
+                                b = (int)targetPointScalar.Val0;
+                                g = (int)targetPointScalar.Val1;
+                                r = (int)targetPointScalar.Val2;
+
                                 sw.Write(ray3dPoint[i,j][k][l,0]);
                                 sw.Write(" ");
                                 sw.Write(ray3dPoint[i, j][k][l,1]);
@@ -1901,7 +2056,7 @@ namespace WindowsFormsApplication3
             }
 
             sw.Close();
-
+            #endregion
         }
         private void segsGroupIntersection(double[][][] segsGroup, out double[][] segsIntersection)
         {
@@ -2090,9 +2245,8 @@ namespace WindowsFormsApplication3
             double[][] camLightCenter;
             readCamPara(".\\Camera parameters.txt", out camPara,nCamera,".jpg");
             cacuFundMat(camPara, out fundMat);
-            cacuEpipole(fundMat, out epipole);
             cacuLightCenter(camPara, out camLightCenter);
-
+            cacuEpipole(camPara,camLightCenter, out epipole);
             #endregion
             #region computer correspond points
             //------------------------求两幅图像的对应点----------------
@@ -2104,7 +2258,7 @@ namespace WindowsFormsApplication3
             //----求极线与轮廓线的交点
 
             double[,][][,] epiConIntersection;
-            getEpilineContourlineIntersection(epiline, contourLine, out epiConIntersection);
+            getEpilineContourlineIntersection(epiline,epipole, contourLine, out epiConIntersection);
 
             #endregion
             #region build model
@@ -2143,7 +2297,7 @@ namespace WindowsFormsApplication3
 
             #endregion
             #region save results
-            savePly("thisply.ply",ray3dPoint, clipFlag);
+            savePly("thisply.ply",ray3dPoint, contourLinePoint,clipFlag);
             #endregion
         }
         #region test
@@ -2268,7 +2422,6 @@ namespace WindowsFormsApplication3
 
             #endregion
         }
-
         private void drawConLine_Click(object sender, EventArgs e)
         {
             int nCamera = 8;
@@ -2333,14 +2486,119 @@ namespace WindowsFormsApplication3
 
 
         }
-        #endregion
+        private void epiConInterBins_Click(object sender, EventArgs e)
+        {
+            #region initialize variables
+            Random rand = new Random();
+            int width = 400;
+            int height = 400;
+            double p1X, p2X;
+            double epiA, epiB, epiC;
+            double epiX1, epiY1, epiX2, epiY2;
+            double conX1, conY1, conX2, conY2;
+            #endregion
+            #region random create epiline
+            while (true)
+            {
+                epiA = rand.NextDouble() / (width);
+                epiB = rand.NextDouble() / (height);
+                epiC = -rand.NextDouble();
 
+                epiX1 = -epiC / epiA;
+                epiY1 = 0;
+                epiX2 = 0;
+                epiY2 = -epiC / epiB;
+
+                if (epiX1 > 0 && epiX1 < (double)width &&
+                    epiY2 > 0 && epiY2 < (double)height)
+                {
+                    break;
+                }
+
+            }
+
+
+            double[] epiOne = new double[3] { epiA, epiB, epiC };
+            #endregion
+            #region random create contourline
+            int contourLineNum = 3;
+            double[,] contourLine = new double[contourLineNum, 7];
+            for (int i = 0; i < contourLineNum; i++)
+            {
+                while (true)
+                {
+                    epiA = rand.Next(-100, 100);
+                    epiB = rand.Next(-100, 100);
+                    epiC = rand.Next(-100, 100);
+
+
+                    p1X = (double)width * rand.NextDouble();
+                    p2X = (double)width * rand.NextDouble();
+                    conX1 = p1X;
+                    conY1 = (-epiC - epiA * p1X) / epiB;
+                    conX2 = p2X;
+                    conY2 = (-epiC - epiA * p2X) / epiB;
+
+                    if (conY1 > 0 && conX1 < (double)height &&
+                        conY2 > 0 && conY2 < (double)height)
+                    {
+                        contourLine[i, 0] = epiA;
+                        contourLine[i, 1] = epiB;
+                        contourLine[i, 2] = epiC;
+                        contourLine[i, 3] = conX1;
+                        contourLine[i, 4] = conY1;
+                        contourLine[i, 5] = conX2;
+                        contourLine[i, 6] = conY2;
+                        break;
+                    }
+                }
+            }
+
+            #endregion
+            #region caculate epiContour intersection
+            double[,] inter;
+            getEpiConInterBins(new double[2]{0,0},epiOne ,contourLine, out inter);
+            #endregion
+            #region show results
+
+
+            Cv.NamedWindow("epiConInterTest", WindowMode.AutoSize);
+            IplImage img = new IplImage(new CvSize(width, height), BitDepth.U8, 3);
+            img.SetZero();
+
+            Cv.DrawLine(img, new CvPoint((int)epiX1, (int)epiY1), new CvPoint((int)epiX2, (int)epiY2), Cv.RGB(255, 0, 0), 3);
+
+            for (int j = 0; j < contourLineNum; j++)
+            {
+                conX1 = contourLine[j, 3];
+                conY1 = contourLine[j, 4];
+                conX2 = contourLine[j, 5];
+                conY2 = contourLine[j, 6];
+                Cv.DrawLine(img, new CvPoint((int)conX1, (int)conY1), new CvPoint((int)conX2, (int)conY2), Cv.RGB(0, 255, 0), 3);
+            }
+
+            for (int j = 0; j < inter.GetLength(0); j++)
+            {
+                double interX1 = inter[j, 0];
+                double interY1 = inter[j, 1];
+                Cv.DrawCircle(img, new CvPoint((int)interX1, (int)interY1), 2, Cv.RGB(0, 0, 255));
+            }
+            //Cv.SaveImage("test.jpg",img);
+            Cv.ShowImage("epiConInterTest", img);
+            Cv.WaitKey(0);
+            Cv.ReleaseImage(img);
+            Cv.DestroyAllWindows();
+
+            #endregion
+        }
+        #endregion
         private void targetContourPoint_Click(object sender, EventArgs e)
         {
             #region initial variables
-            const int nCamera = 8;//参考图数量
+            const int nCamera = 2;//参考图数量
             const int nTargetStart = 0;//目标图nTargetStart - nTargetEnd
-            const int nTargetEnd = 8;
+            const int nTargetEnd = 2;
+            const int sampleEveryN = 10;
             const string imgFormat = ".jpg";
             #endregion
             #region input processing
@@ -2358,7 +2616,7 @@ namespace WindowsFormsApplication3
             ////getImgContourLine(contourDir, out contourLineDir, nCamera);
 
             double[][,] contourPoint;
-            getContourPoint(".\\dataset-dinosaur\\contour", out contourPoint, nCamera, imgFormat,nTargetStart,nTargetEnd);
+            getContourPoint(".\\dataset-dinosaur\\contour", out contourPoint, nCamera, imgFormat,nTargetStart,nTargetEnd,sampleEveryN);
             //----读取轮廓线点
             //in:轮廓点文件夹路径
             //out1:轮廓点【n个图像|每个图像m个轮廓点，m不一样】
@@ -2380,9 +2638,8 @@ namespace WindowsFormsApplication3
             double[][] camLightCenter;
             readCamPara(".\\Camera parameters.txt", out camPara, nCamera, ".jpg");
             cacuFundMat(camPara, out fundMat);
-            cacuEpipole(fundMat, out epipole);
             cacuLightCenter(camPara, out camLightCenter);
-
+            cacuEpipole(camPara,camLightCenter, out epipole);
             #endregion
             #region computer correspond points
             //------------------------求两幅图像的对应点----------------
@@ -2394,7 +2651,7 @@ namespace WindowsFormsApplication3
             //----求极线与轮廓线的交点
 
             double[,][][,] epiConIntersection;
-            getEpilineContourlineIntersection(epiline, contourLine, out epiConIntersection);
+            getEpilineContourlineIntersection(epiline,epipole,contourLine, out epiConIntersection);
 
             #endregion
             #region build model
@@ -2433,8 +2690,9 @@ namespace WindowsFormsApplication3
 
             #endregion
             #region save results
-            savePly("thisply.ply", ray3dPoint, clipFlag);
+            savePly("thisply.ply", ray3dPoint, contourPoint, clipFlag);
             #endregion
         }
+        #endregion
     }
 }
